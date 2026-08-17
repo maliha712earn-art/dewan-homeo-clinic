@@ -8,6 +8,7 @@ import prisma from '../config/db';
  * 1. Syncs Prisma schema tables to PostgreSQL/Supabase automatically.
  * 2. Ensures the default super admin account exists with hashed credentials.
  * 3. Seeds core website settings and delivery zones.
+ * 4. Seeds default homeopathy product categories.
  */
 export async function bootstrapDatabase() {
   console.log('🌱 Starting automatic database bootstrap and synchronization...');
@@ -109,6 +110,34 @@ export async function bootstrapDatabase() {
     }
   } catch (err: any) {
     console.warn('⚠️ Delivery settings bootstrap notice:', err.message || err);
+  }
+
+  // Step 5: Ensure Default Homeopathy Product Categories Exist
+  try {
+    const defaultCategories = [
+      { name: 'Skin Care', nameBn: 'ত্বকের যত্ন', slug: 'skin-care', description: 'ত্বকের যত্ন ও বাহ্যিক পরিচর্যা পণ্য' },
+      { name: 'Mother Tincture', nameBn: 'মাদার টিংচার', slug: 'mother-tincture', description: 'বিশুদ্ধ হোমিওপ্যাথিক উদ্ভিজ্জ ও ভেষজ মাদার টিংচার (Q)' },
+      { name: 'Biochemic', nameBn: 'বায়োকেমিক', slug: 'biochemic', description: '১২ টি প্রয়োজনীয় টিস্যু সল্ট ও বায়োকেমিক মেডিসিন' },
+      { name: 'Homeopathic Medicine', nameBn: 'হোমিওপ্যাথিক মেডিসিন', slug: 'homeopathic-medicine', description: 'হোমিওপ্যাথিক ডিলিউশন ও কমপ্লিট কেয়ার মেডিসিন' },
+      { name: 'External Medicine', nameBn: 'বাহ্যিক প্রয়োগের ওষুধ', slug: 'external-medicine', description: 'লোশন, মলম, তেল ও বাহ্যিক ব্যবহারের ওষুধ' },
+      { name: 'Hair Care', nameBn: 'চুলের যত্ন', slug: 'hair-care', description: 'চুল পড়া রোধ ও মাথার ত্বকের পুষ্টি যত্ন' },
+      { name: 'General', nameBn: 'সাধারণ', slug: 'general', description: 'সাধারণ স্বাস্থ্য ও ফিটনেস সহায়ক পণ্য' },
+    ];
+
+    for (const cat of defaultCategories) {
+      await prisma.productCategory.upsert({
+        where: { slug: cat.slug },
+        update: {
+          name: cat.name,
+          nameBn: cat.nameBn,
+          description: cat.description,
+        },
+        create: cat,
+      });
+    }
+    console.log('🌿 Default Homeopathy categories initialized & verified.');
+  } catch (err: any) {
+    console.warn('⚠️ Categories bootstrap notice:', err.message || err);
   }
 
   console.log('✅ Automatic database bootstrap completed.');

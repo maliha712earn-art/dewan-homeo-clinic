@@ -39,6 +39,7 @@ import {
   updateSettingsAdmin,
   getAuditLogsAdmin,
 } from '../controllers/admin.controller';
+import { getCategories } from '../controllers/product.controller';
 import { authenticateAdmin, requireSuperAdmin } from '../middleware/adminAuth.middleware';
 import { authLimiter } from '../middleware/rateLimit.middleware';
 
@@ -49,6 +50,9 @@ router.post('/login', authLimiter, adminLogin);
 
 // Protected Admin Routes
 router.use(authenticateAdmin);
+
+// Categories
+router.get('/categories', getCategories);
 
 // Admin Profile & User Management
 router.get('/me', getAdminMe);

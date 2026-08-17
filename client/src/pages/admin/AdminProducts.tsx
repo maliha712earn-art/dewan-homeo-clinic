@@ -62,7 +62,7 @@ export const AdminProducts: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const res = await api.get('/products/categories');
-      if (res.data.success) {
+      if (res.data.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
         setCategories(res.data.data);
       }
     } catch (err) {
@@ -75,7 +75,20 @@ export const AdminProducts: React.FC = () => {
     fetchCategories();
   }, [page]);
 
-  const handleOpenAdd = () => {
+  const handleOpenAdd = async () => {
+    let currentCategories = categories;
+    if (currentCategories.length === 0) {
+      try {
+        const res = await api.get('/products/categories');
+        if (res.data.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          currentCategories = res.data.data;
+          setCategories(currentCategories);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     setEditingProduct(null);
     setFormData({
       name: '',
@@ -92,7 +105,7 @@ export const AdminProducts: React.FC = () => {
       isPublished: true,
       isFeatured: false,
       isSpecialOffer: false,
-      categoryId: categories[0]?.id || '',
+      categoryId: currentCategories[0]?.id || '',
       images: [''],
     });
     setModalOpen(true);
@@ -340,10 +353,10 @@ export const AdminProducts: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="">নির্বাচন করুন</option>
+                <option value="">-- ক্যাটাগরি নির্বাচন করুন --</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.nameBn}
+                    {c.nameBn} ({c.name})
                   </option>
                 ))}
               </select>
