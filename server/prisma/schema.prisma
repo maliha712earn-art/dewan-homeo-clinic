@@ -1,0 +1,314 @@
+// Prisma schema for দেওয়ান হোমিও ক্লিনিক (Deowan Homeo Clinic)
+// Supports SQLite locally and PostgreSQL / Supabase for production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(uuid())
+  name         String
+  phone        String         @unique
+  email        String?        @unique
+  passwordHash String
+  address      String?
+  district     String?
+  upazila      String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  orders       Order[]
+  cart         Cart?
+  consultations Consultation[]
+}
+
+model Admin {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         String     @default("SUPER_ADMIN") // SUPER_ADMIN, MANAGER, STAFF
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  auditLogs    AuditLog[]
+}
+
+model ProductCategory {
+  id          String    @id @default(uuid())
+  name        String
+  nameBn      String
+  slug        String    @unique
+  description String?
+  image       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+}
+
+model Product {
+  id             String          @id @default(uuid())
+  name           String
+  nameBn         String
+  slug           String          @unique
+  description    String
+  descriptionBn  String?
+  price          Float
+  discountPrice  Float?
+  stock          Int             @default(0)
+  sku            String?         @unique
+  brand          String?
+  weightSize     String?
+  status         String          @default("ACTIVE") // ACTIVE, INACTIVE, OUT_OF_STOCK
+  isPublished    Boolean         @default(true)
+  isFeatured     Boolean         @default(false)
+  isSpecialOffer Boolean         @default(false)
+  isNew          Boolean         @default(false)
+  categoryId     String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  category       ProductCategory @relation(fields: [categoryId], references: [id])
+  images         ProductImage[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  url       String
+  isPrimary Boolean  @default(false)
+  productId String
+  createdAt DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Service {
+  id            String   @id @default(uuid())
+  title         String
+  titleBn       String
+  slug          String   @unique
+  description   String
+  descriptionBn String
+  imageUrl      String?
+  price         Float?
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Consultation {
+  id                String              @id @default(uuid())
+  name              String
+  phone             String
+  age               Int?
+  gender            String?             // Male, Female, Other
+  address           String?
+  problem           String              // Chief complaint / symptom description
+  duration          String?             // Duration of problem e.g. "৬ মাস", "১ বছর"
+  previousTreatment String?             // Any prior medications or allopathy/homeo history
+  notes             String?
+  status            String              @default("NEW") // NEW, REVIEWED, CONTACTED, IN_PROGRESS, COMPLETED, CANCELLED
+  adminNotes        String?
+  isPrivate         Boolean             @default(true)
+  userId            String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  user              User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  images            ConsultationImage[]
+}
+
+model ConsultationImage {
+  id             String       @id @default(uuid())
+  url            String
+  consultationId String
+  createdAt      DateTime     @default(now())
+
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+}
+
+model Cart {
+  id           String     @id @default(uuid())
+  userId       String?    @unique
+  sessionToken String?    @unique
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user         User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items        CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id              String               @id @default(uuid())
+  orderNumber     String               @unique // e.g. DH-2026-00001
+  userId          String?
+  customerName    String
+  phone           String
+  deliveryAddress String
+  district        String?
+  upazila         String?
+  cityDistrict    String?              // Compatibility field
+  customerNote    String?
+  subtotal        Float
+  deliveryCharge  Float
+  totalAmount     Float
+  paymentMethod   String               @default("COD") // COD, MANUAL_BKASH, MANUAL_NAGAD
+  paymentStatus   String               @default("PENDING") // PENDING, PAID, FAILED, REFUNDED
+  orderStatus     String               @default("Pending") // Pending, Confirmed, Processing, Shipped, Delivered, Cancelled
+  adminNotes      String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  user            User?                @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  productId   String?
+  productName String
+  price       Float
+  quantity    Int
+  total       Float
+  image       String?
+  createdAt   DateTime @default(now())
+
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  status    String
+  note      String?
+  changedBy String   @default("SYSTEM")
+  createdAt DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model BeforeAfterCase {
+  id            String   @id @default(uuid())
+  title         String
+  titleBn       String
+  description   String?
+  descriptionBn String?
+  category      String   // e.g., "ত্বকের সমস্যা", "শ্বেতী", "ব্রণ", "সাধারণ স্বাস্থ্য"
+  beforeImage   String
+  afterImage    String
+  durationText  String?  // e.g., "৩ মাস", "৬ মাস"
+  hasConsent    Boolean  @default(true)
+  isPublished   Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ArticleCategory {
+  id          String    @id @default(uuid())
+  name        String
+  nameBn      String
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  articles    Article[]
+}
+
+model Article {
+  id             String          @id @default(uuid())
+  title          String
+  titleBn        String
+  slug           String          @unique
+  content        String
+  contentBn      String
+  excerpt        String?
+  excerptBn      String?
+  coverImage     String?
+  author         String          @default("দেওয়ান হোমিও ক্লিনিক")
+  tags           String?         // comma-separated tags
+  seoTitle       String?
+  seoDescription String?
+  isPublished    Boolean         @default(true)
+  viewCount      Int             @default(0)
+  categoryId     String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  category       ArticleCategory @relation(fields: [categoryId], references: [id])
+}
+
+model ContactMessage {
+  id         String   @id @default(uuid())
+  name       String
+  phone      String
+  email      String?
+  subject    String?
+  message    String
+  status     String   @default("NEW") // NEW, READ, REPLIED
+  adminNotes String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model WebsiteSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  category    String   @default("GENERAL") // GENERAL, CLINIC, CONTACT, HOMEPAGE, FOOTER, POLICY
+  updatedAt   DateTime @updatedAt
+}
+
+model DeliverySetting {
+  id            String   @id @default(uuid())
+  areaName      String
+  areaNameBn    String
+  charge        Float
+  estimatedDays String   @default("২-৩ দিন")
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  adminId    String?
+  adminEmail String?
+  action     String   // e.g. "UPDATE_ORDER_STATUS", "CREATE_PRODUCT", "LOGIN"
+  targetType String?  // e.g. "ORDER", "PRODUCT", "SETTING"
+  targetId   String?
+  details    String?  // JSON string or summary
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  admin      Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+}

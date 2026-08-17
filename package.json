@@ -1,0 +1,35 @@
+{
+  "name": "deowan-homeo-clinic",
+  "version": "1.0.0",
+  "description": "Full-Stack Web Application for দেওয়ান হোমিও ক্লিনিক (Deowan Homeo Clinic)",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client && npm run build --prefix server",
+    "build:render": "npm install --prefix server && npm install --prefix client && npm run build --prefix client && npm run build --prefix server && npm run prisma:push --prefix server && npm run prisma:seed --prefix server",
+    "build:server": "npm run build --prefix server",
+    "build:client": "npm run build --prefix client",
+    "start": "node server/dist/server.js",
+    "db:push": "npm run prisma:push --prefix server",
+    "db:seed": "npm run prisma:seed --prefix server",
+    "test": "npm test --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": [
+    "homeopathy",
+    "clinic",
+    "health",
+    "bangladesh",
+    "ecommerce",
+    "react",
+    "express",
+    "prisma"
+  ],
+  "author": "Deowan Homeo Clinic",
+  "license": "ISC"
+}
