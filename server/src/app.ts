@@ -18,7 +18,7 @@ app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-session-token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-token', 'x-session-token', 'Accept'],
 }));
 
 app.use(express.json({ limit: '10mb' }));

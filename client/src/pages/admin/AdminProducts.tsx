@@ -142,9 +142,18 @@ export const AdminProducts: React.FC = () => {
     try {
       const form = new FormData();
       form.append('image', file);
+
+      const adminToken = localStorage.getItem('dewan_admin_token') || localStorage.getItem('token');
+      const uploadHeaders: Record<string, string> = {};
+      if (adminToken) {
+        uploadHeaders['Authorization'] = `Bearer ${adminToken}`;
+        uploadHeaders['x-admin-token'] = adminToken;
+      }
+
       const res = await api.post('/upload/admin-image', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: uploadHeaders,
       });
+
       if (res.data.success) {
         const uploadedUrl = res.data.data.url;
         setFormData((prev) => ({
@@ -155,8 +164,15 @@ export const AdminProducts: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Image upload error:', err);
-      const msg = err.response?.data?.message || 'ছবি আপলোড করতে সমস্যা হয়েছে।';
-      showToast(msg, 'error');
+      if (err.response?.status === 401) {
+        showToast('অ্যাডমিন সেশনের মেয়াদ শেষ হয়েছে। পুনরায় লগইন করুন।', 'error');
+        setTimeout(() => {
+          window.location.href = '/admin/login';
+        }, 1000);
+      } else {
+        const msg = err.response?.data?.message || 'ছবি আপলোড করতে সমস্যা হয়েছে।';
+        showToast(msg, 'error');
+      }
     } finally {
       setUploadingImage(false);
       // Reset input value

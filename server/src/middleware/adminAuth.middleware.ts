@@ -25,10 +25,18 @@ export async function authenticateAdmin(req: AdminAuthRequest, res: Response, ne
   try {
     const payload = verifyAdminToken(token);
 
-    // Check if admin is active in DB
-    const admin = await prisma.admin.findUnique({
-      where: { id: payload.adminId },
-    });
+    // Find admin by ID or by Email
+    let admin = null;
+    if (payload.adminId) {
+      admin = await prisma.admin.findUnique({
+        where: { id: payload.adminId },
+      });
+    }
+    if (!admin && payload.email) {
+      admin = await prisma.admin.findUnique({
+        where: { email: payload.email.trim().toLowerCase() },
+      });
+    }
 
     if (!admin || !admin.isActive) {
       return res.status(403).json({ success: false, message: 'অ্যাডমিন একাউন্ট নিষ্ক্রিয় বা পাওয়া যায়নি।' });
