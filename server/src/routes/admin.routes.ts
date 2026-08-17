@@ -40,6 +40,7 @@ import {
   getAuditLogsAdmin,
 } from '../controllers/admin.controller';
 import { getCategories } from '../controllers/product.controller';
+import uploadRoutes from './upload.routes';
 import { authenticateAdmin, requireSuperAdmin } from '../middleware/adminAuth.middleware';
 import { authLimiter } from '../middleware/rateLimit.middleware';
 
@@ -50,6 +51,9 @@ router.post('/login', authLimiter, adminLogin);
 
 // Protected Admin Routes
 router.use(authenticateAdmin);
+
+// Uploads under /admin/upload
+router.use('/upload', uploadRoutes);
 
 // Categories
 router.get('/categories', getCategories);

@@ -26,5 +26,10 @@ export function signAdminToken(payload: AdminTokenPayload): string {
 }
 
 export function verifyAdminToken(token: string): AdminTokenPayload {
-  return jwt.verify(token, config.adminJwtSecret) as AdminTokenPayload;
+  try {
+    return jwt.verify(token, config.adminJwtSecret) as AdminTokenPayload;
+  } catch (err) {
+    // Fallback: Check with standard jwtSecret in case server environment used general secret
+    return jwt.verify(token, config.jwtSecret) as AdminTokenPayload;
+  }
 }

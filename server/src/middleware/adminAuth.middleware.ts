@@ -9,15 +9,22 @@ export interface AdminAuthRequest extends Request {
 }
 
 export async function authenticateAdmin(req: AdminAuthRequest, res: Response, next: NextFunction) {
+  let token: string | undefined;
+
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: 'অননুমোদিত অ্যাডমিন অ্যাক্সেস।' });
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.headers['x-admin-token']) {
+    token = req.headers['x-admin-token'] as string;
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'অননুমোদিত অ্যাডমিন অ্যাক্সেস। অনুগ্রহ করে লগইন করুন।' });
+  }
+
   try {
     const payload = verifyAdminToken(token);
-    
+
     // Check if admin is active in DB
     const admin = await prisma.admin.findUnique({
       where: { id: payload.adminId },
@@ -34,7 +41,8 @@ export async function authenticateAdmin(req: AdminAuthRequest, res: Response, ne
       name: admin.name,
     };
     next();
-  } catch (err) {
+  } catch (err: any) {
+    console.warn('⚠️ Admin token verification failed:', err.message);
     return res.status(401).json({ success: false, message: 'অ্যাডমিন সেশনের মেয়াদ শেষ হয়েছে। পুনরায় লগইন করুন।' });
   }
 }
