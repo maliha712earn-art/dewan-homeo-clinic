@@ -1,13 +1,32 @@
+import { execSync } from 'child_process';
+import path from 'path';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
 
 /**
  * Automatically bootstraps database defaults on production server startup.
- * Ensures the super admin account and core settings exist without requiring manual Shell access.
+ * 1. Syncs Prisma schema tables to PostgreSQL/Supabase automatically.
+ * 2. Ensures the default super admin account exists with hashed credentials.
+ * 3. Seeds core website settings and delivery zones.
  */
 export async function bootstrapDatabase() {
+  console.log('🌱 Starting automatic database bootstrap and synchronization...');
+
+  // Step 1: Sync Database Schema Tables (Self-healing for fresh/reconnected databases)
   try {
-    // 1. Ensure Default Admin User Exists & Has Up-to-Date Credentials
+    console.log('🔄 Verifying and syncing Prisma schema tables...');
+    execSync('npx prisma db push --skip-generate --accept-data-loss', {
+      cwd: path.resolve(__dirname, '../../'),
+      stdio: 'pipe',
+      env: { ...process.env },
+    });
+    console.log('✅ Database schema tables verified & synced.');
+  } catch (err: any) {
+    console.warn('⚠️ Schema push notice (continuing bootstrap):', err.message || err);
+  }
+
+  // Step 2: Ensure Default Admin User Exists & Has Up-to-Date Credentials
+  try {
     const defaultEmail = 'admin@dewanhomeo.com';
     const defaultPassword = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@123456';
     const adminPasswordHash = await bcrypt.hash(defaultPassword, 10);
@@ -28,9 +47,13 @@ export async function bootstrapDatabase() {
         isActive: true,
       },
     });
-    console.log(`🔒 Admin initialized/verified: ${admin.email} (${admin.role})`);
+    console.log(`🔒 Default Admin verified: ${admin.email} (Role: ${admin.role}, Active: ${admin.isActive})`);
+  } catch (err: any) {
+    console.error('❌ Failed to bootstrap admin user:', err.message || err);
+  }
 
-    // 2. Ensure Core Website Settings Exist
+  // Step 3: Ensure Core Website Settings Exist
+  try {
     const defaultSettings = [
       { key: 'CLINIC_NAME', value: 'দেওয়ান হোমিও ক্লিনিক', category: 'CLINIC', description: 'ক্লিনিকের বাংলা নাম' },
       { key: 'CLINIC_NAME_EN', value: 'Deowan Homeo Clinic', category: 'CLINIC', description: 'Clinic Name in English' },
@@ -57,8 +80,12 @@ export async function bootstrapDatabase() {
         create: s,
       });
     }
+  } catch (err: any) {
+    console.warn('⚠️ Website settings bootstrap notice:', err.message || err);
+  }
 
-    // 3. Ensure Default Delivery Zones Exist
+  // Step 4: Ensure Default Delivery Zones Exist
+  try {
     const deliveryCount = await prisma.deliverySetting.count();
     if (deliveryCount === 0) {
       await prisma.deliverySetting.createMany({
@@ -80,9 +107,9 @@ export async function bootstrapDatabase() {
         ],
       });
     }
-
-    console.log('✅ Automatic database bootstrap completed successfully.');
-  } catch (error) {
-    console.error('⚠️ Database bootstrap warning (non-fatal):', error);
+  } catch (err: any) {
+    console.warn('⚠️ Delivery settings bootstrap notice:', err.message || err);
   }
+
+  console.log('✅ Automatic database bootstrap completed.');
 }
