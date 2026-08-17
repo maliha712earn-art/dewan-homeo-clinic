@@ -1,6 +1,7 @@
 import app from './app';
 import { config } from './config';
 import prisma from './config/db';
+import { bootstrapDatabase } from './utils/bootstrap.util';
 
 const PORT = config.port || 5000;
 
@@ -9,6 +10,9 @@ async function startServer() {
     // Verify database connection
     await prisma.$connect();
     console.log('✅ Database connected successfully');
+
+    // Automatically seed/update default admin and website settings
+    await bootstrapDatabase();
 
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🌿 দেওয়ান হোমিও ক্লিনিক (Deowan Homeo Clinic) running on 0.0.0.0:${PORT}`);

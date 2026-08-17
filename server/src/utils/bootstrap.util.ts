@@ -1,0 +1,88 @@
+import bcrypt from 'bcryptjs';
+import prisma from '../config/db';
+
+/**
+ * Automatically bootstraps database defaults on production server startup.
+ * Ensures the super admin account and core settings exist without requiring manual Shell access.
+ */
+export async function bootstrapDatabase() {
+  try {
+    // 1. Ensure Default Admin User Exists & Has Up-to-Date Credentials
+    const defaultEmail = 'admin@dewanhomeo.com';
+    const defaultPassword = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@123456';
+    const adminPasswordHash = await bcrypt.hash(defaultPassword, 10);
+
+    const admin = await prisma.admin.upsert({
+      where: { email: defaultEmail },
+      update: {
+        name: 'প্রধান অ্যাডমিন',
+        passwordHash: adminPasswordHash,
+        role: 'SUPER_ADMIN',
+        isActive: true,
+      },
+      create: {
+        name: 'প্রধান অ্যাডমিন',
+        email: defaultEmail,
+        passwordHash: adminPasswordHash,
+        role: 'SUPER_ADMIN',
+        isActive: true,
+      },
+    });
+    console.log(`🔒 Admin initialized/verified: ${admin.email} (${admin.role})`);
+
+    // 2. Ensure Core Website Settings Exist
+    const defaultSettings = [
+      { key: 'CLINIC_NAME', value: 'দেওয়ান হোমিও ক্লিনিক', category: 'CLINIC', description: 'ক্লিনিকের বাংলা নাম' },
+      { key: 'CLINIC_NAME_EN', value: 'Deowan Homeo Clinic', category: 'CLINIC', description: 'Clinic Name in English' },
+      { key: 'TAGLINE', value: 'বিশ্বস্ত পরামর্শ, যত্ন ও সেবায় আপনার পাশে', category: 'CLINIC', description: 'ক্লিনিকের মূল স্লোগান' },
+      { key: 'PHONE', value: '01643184368', category: 'CONTACT', description: 'প্রধান হেল্পলাইন নম্বর' },
+      { key: 'WHATSAPP', value: '01643184368', category: 'CONTACT', description: 'হোয়াটসঅ্যাপ নম্বর' },
+      { key: 'EMAIL', value: 'info@dewanhomeo.com', category: 'CONTACT', description: 'ইমেইল ঠিকানা' },
+      { key: 'PRIMARY_ADDRESS', value: 'চাঁদপুর জেলার কচুয়া থানা, গোলবাহার রোড।', category: 'CONTACT', description: 'প্রধান ঠিকানা' },
+      { key: 'ADDITIONAL_ADDRESS', value: 'চাঁদপুর জেলার হাজীগঞ্জ থানার বিশ্বরোড থেকে রামগঞ্জ রোডের দিকে মনতলা বাজার এলাকার কাছাকাছি।', category: 'CONTACT', description: 'অতিরিক্ত অবস্থান বিবরণ' },
+      { key: 'OPENING_HOURS', value: 'প্রতিদিন সকাল ৯:০০ টা - রাত ৮:০০ টা', category: 'CLINIC', description: 'সেবা প্রদানের সময়' },
+      { key: 'HERO_TITLE', value: 'দেওয়ান হোমিও ক্লিনিকে স্বাগতম', category: 'HOMEPAGE', description: 'হোমপেজ প্রধান শিরোনাম' },
+      { key: 'HERO_SUBTITLE', value: 'বিশ্বস্ত পরামর্শ, যত্ন ও সেবায় আপনার পাশে', category: 'HOMEPAGE', description: 'হোমপেজ সাব-শিরোনাম' },
+      { key: 'HERO_DESCRIPTION', value: 'হোমিওপ্যাথিক চিকিৎসা ও স্বাস্থ্যসেবা সম্পর্কে পরামর্শের জন্য আমাদের সাথে যোগাযোগ করুন।', category: 'HOMEPAGE', description: 'হোমপেজ বিবরণ' },
+      { key: 'ABOUT_TEXT', value: 'দেওয়ান হোমিও ক্লিনিক একটি হোমিওপ্যাথিক চিকিৎসা ও পরামর্শ কেন্দ্র। রোগীদের প্রয়োজন অনুযায়ী আন্তরিকভাবে পরামর্শ ও সেবা দেওয়াই আমাদের লক্ষ্য।', category: 'CLINIC', description: 'ক্লিনিক পরিচিতি ও লক্ষ্য' },
+      { key: 'MEDICAL_DISCLAIMER', value: 'এই ওয়েবসাইটের তথ্য সাধারণ স্বাস্থ্য সচেতনতার উদ্দেশ্যে দেওয়া। অনলাইনে দেওয়া তথ্যের ভিত্তিতে চূড়ান্ত চিকিৎসা সিদ্ধান্ত নেওয়ার আগে প্রয়োজন অনুযায়ী যোগ্য চিকিৎসকের পরামর্শ নিন।', category: 'POLICY', description: 'চিকিৎসা সংক্রান্ত ডিসক্লেইমার' },
+      { key: 'GUEST_CHECKOUT_ENABLED', value: 'true', category: 'GENERAL', description: 'গেস্ট চেকআউট সক্রিয় কিনা' },
+      { key: 'CONSULTATION_ENABLED', value: 'true', category: 'GENERAL', description: 'অনলাইন পরামর্শ ফর্ম সক্রিয় কিনা' },
+    ];
+
+    for (const s of defaultSettings) {
+      await prisma.websiteSetting.upsert({
+        where: { key: s.key },
+        update: {},
+        create: s,
+      });
+    }
+
+    // 3. Ensure Default Delivery Zones Exist
+    const deliveryCount = await prisma.deliverySetting.count();
+    if (deliveryCount === 0) {
+      await prisma.deliverySetting.createMany({
+        data: [
+          {
+            areaName: 'Inside Dhaka / Chandpur Local',
+            areaNameBn: 'চাঁদপুর / ঢাকার ভিতরে',
+            charge: 60,
+            estimatedDays: '২-৩ দিন',
+            isDefault: true,
+          },
+          {
+            areaName: 'Outside Dhaka / Nationwide',
+            areaNameBn: 'সারা বাংলাদেশ (কুরিয়ার)',
+            charge: 120,
+            estimatedDays: '৩-৫ দিন',
+            isDefault: false,
+          },
+        ],
+      });
+    }
+
+    console.log('✅ Automatic database bootstrap completed successfully.');
+  } catch (error) {
+    console.error('⚠️ Database bootstrap warning (non-fatal):', error);
+  }
+}
