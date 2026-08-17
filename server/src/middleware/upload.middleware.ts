@@ -21,16 +21,11 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
   }
 };
 
-// Storage for public media (products, services, blogs, banners, before-after)
-const publicStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, publicUploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `media-${uniqueSuffix}${ext}`);
-  },
+// Memory storage for public media (products, services, blogs, banners, before-after) to upload to Supabase Storage
+export const uploadPublicImage = multer({
+  storage: multer.memoryStorage(),
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
 // Storage for private consultation images
@@ -43,12 +38,6 @@ const consultationStorage = multer.diskStorage({
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, `consult-${uniqueSuffix}${ext}`);
   },
-});
-
-export const uploadPublicImage = multer({
-  storage: publicStorage,
-  fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
 export const uploadConsultationImage = multer({

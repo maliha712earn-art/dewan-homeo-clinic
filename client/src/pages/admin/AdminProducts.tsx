@@ -154,9 +154,13 @@ export const AdminProducts: React.FC = () => {
         showToast('ছবি সফলভাবে আপলোড হয়েছে।', 'success');
       }
     } catch (err: any) {
-      showToast('ছবি আপলোড করতে সমস্যা হয়েছে।', 'error');
+      console.error('Image upload error:', err);
+      const msg = err.response?.data?.message || 'ছবি আপলোড করতে সমস্যা হয়েছে।';
+      showToast(msg, 'error');
     } finally {
       setUploadingImage(false);
+      // Reset input value
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -448,12 +452,32 @@ export const AdminProducts: React.FC = () => {
                 placeholder="https://... বা ছবি আপলোড করুন"
                 className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500"
               />
-              <label className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1">
+              <label className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 transition">
                 {uploadingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                <span>আপলোড</span>
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                <span>{uploadingImage ? 'আপলোড হচ্ছে...' : 'ছবি আপলোড'}</span>
+                <input type="file" accept="image/*" disabled={uploadingImage} onChange={handleImageUpload} className="hidden" />
               </label>
             </div>
+            {formData.images[0] && (
+              <div className="flex items-center gap-3 mt-2 p-2 bg-slate-50 rounded-xl border border-slate-200 w-fit">
+                <img
+                  src={formData.images[0]}
+                  alt="Product Preview"
+                  className="w-12 h-12 object-cover rounded-lg border border-slate-200"
+                  onError={(e) => { (e.target as any).style.display = 'none'; }}
+                />
+                <div className="text-[11px] text-slate-600">
+                  <p className="font-semibold text-emerald-700">ছবি সিলেক্ট করা হয়েছে</p>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, images: [''] })}
+                    className="text-rose-500 hover:underline"
+                  >
+                    ছবি সরান
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Feature toggles */}
